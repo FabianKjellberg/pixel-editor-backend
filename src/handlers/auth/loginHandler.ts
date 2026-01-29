@@ -1,5 +1,12 @@
 import { Context } from "hono"
 
+type LoginBody = {
+    username: string;
+    password: string;
+}
+
 export const loginHandler = async (c: Context) => {
-    return c.json({ message: 'Hello World' })
+    const body = await c.req.json<LoginBody>();
+
+
 }
