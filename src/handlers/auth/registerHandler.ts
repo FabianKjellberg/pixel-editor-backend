@@ -19,9 +19,10 @@ export const registerHandler = async (c: Context) => {
 
     const db = c.env.DB as D1Database;
 
-    const isAvailable = await queries.users.usernameExists(db, body.username);
+    const userNameExists = await queries.users.usernameExists(db, body.username);
 
-    if (!isAvailable) {
+    // return early if the username already exists
+    if (userNameExists) {
       return c.json({ error: 'username already exists' }, 409);
     }
 
