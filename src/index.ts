@@ -1,26 +1,17 @@
 import { Hono } from 'hono'
 import type { Bindings } from './env'
+import authRoutes from './routes/auth'
+import { cors } from 'hono/cors'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+app.use('*', cors({
+  origin: ['https://fabiankjellberg.dev', 'http://localhost:3000'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}))
 
-app.get('/api/test', async (c) => {
-  try {
-    const result = await c.env.DB
-      .prepare('SELECT * FROM users')
-      .all()
-    console.log('Query result:', result)
-    return c.json({
-      message: 'Hello Hono!',
-      result
-    })
-  } catch (error) {
-    console.error('DB error:', error)
-    return c.text('Internal Server Error', 500)
-  }
-})
+app.route('/auth', authRoutes)
 
 export default app
