@@ -1,6 +1,7 @@
 import { D1Database } from "@cloudflare/workers-types"
+import { UserEntity, userMapper, UserRow } from "../models/User";
 
-type createUserParams = {
+type CreateUserParams = {
   id: string;
   username: string;
   passwordHash: string;
@@ -26,7 +27,7 @@ export async function usernameExists(db: D1Database, username: string): Promise<
  * @param db - the database connection
  * @param user - the user to create
  */
-export async function createUser(db: D1Database, user: createUserParams): Promise<void> {
+export async function createUser(db: D1Database, user: CreateUserParams): Promise<void> {
   await db
     .prepare(`
       INSERT INTO users (id, username, password_hash) 
@@ -34,4 +35,28 @@ export async function createUser(db: D1Database, user: createUserParams): Promis
     `)
     .bind(user.id, user.username, user.passwordHash)
     .run();
+}
+
+/**
+ * get user entity from username
+ * @param db - the database connection
+ * @param username - the username to get the user for
+ * @returns the user entity if found, null otherwise
+ */
+export async function getUserByUsername(db: D1Database, username: string): Promise<UserEntity | null> {
+  const result = await db
+    .prepare(`
+      SELECT * FROM users
+      WHERE username = ?
+    `)
+    .bind(username)
+    .first<UserRow>();
+
+  if (result === null) {
+    return null;
+  }
+
+  const user: UserEntity = userMapper.fromRow(result);
+
+  return user;
 }
