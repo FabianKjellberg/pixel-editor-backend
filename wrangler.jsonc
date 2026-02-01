@@ -3,6 +3,9 @@
   "name": "pixel-editor-backend",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-28",
+  "vars": {
+    "ENV": "production"
+  },
   "r2_buckets": [
     {
       "binding": "BLOB",
