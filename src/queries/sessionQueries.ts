@@ -81,20 +81,6 @@ export async function rotateToken(db: D1Database, params: RotateTokenParams): Pr
     .bind(params.now, params.oldHashedToken)
     .run();
 
-    console.log({
-      sessionId: params.sessionId,
-      tokenId: params.tokenId,
-      oldHashedToken: params.oldHashedToken.slice(0, 8),
-      newHashedToken: params.newHashedToken.slice(0, 8),
-    });
-
-    const exists = await db
-  .prepare(`SELECT 1 FROM refresh_session WHERE id = ?`)
-  .bind(params.sessionId)
-  .first();
-
-console.log("session exists?", !!exists);
-
   await db
     .prepare(`
       INSERT INTO refresh_token (id, refresh_session_id, token_hash, valid_to)

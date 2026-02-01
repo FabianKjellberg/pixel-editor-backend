@@ -5,8 +5,12 @@ import { logoutHandler } from '../handlers/auth/logoutHandler'
 import { refreshHandler } from '../handlers/auth/refreshHandler'
 
 import { authMiddleware } from '../middlewares/authMiddleware'
+import { testAuthHandler } from '../handlers/auth/testAuthHandler'
 
 const authRoutes = new Hono();
+
+// Test auth
+authRoutes.get('/test-auth', authMiddleware, testAuthHandler)
 
 // Login route
 authRoutes.post('/login', loginHandler);
