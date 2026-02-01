@@ -49,7 +49,7 @@ export async function createRefreshSessionWithToken(db: D1Database, session: Cre
 export async function getSessionFromToken(db: D1Database, tokenHash: string): Promise<SessionEntity | null> {
   const session = await db
   .prepare(`
-    SELECT * FROM refresh_session as rs
+    SELECT rs.* FROM refresh_session as rs
     JOIN refresh_token as rt
       ON rt.refresh_session_id == rs.id
     WHERE rt.token_hash = ?
