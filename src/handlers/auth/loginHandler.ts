@@ -1,7 +1,7 @@
 import { Context } from "hono"
 import { queries } from "../../queries";
 import bcrypt from "bcryptjs";
-import { generateSessionToken, hashSessionToken } from "../../util/authUtil";
+import { createAccessToken, generateSessionToken, hashSessionToken } from "../../util/authUtil";
 import { setCookie } from "hono/cookie";
 
 type LoginBody = {
@@ -17,12 +17,14 @@ export const loginHandler = async (c: Context) => {
 
     const user = await queries.users.getUserByUsername(db, body.username)
 
+    // return identical error response for password and username
     if (!user) {
       return c.json({ error: 'invalid credentials' }, 401)
     }
 
     const isPasswordValid = await bcrypt.compare(body.password, user.passwordHash)
 
+    // return identical error response for password and username
     if (!isPasswordValid) {
       return c.json({ error: 'invalid credentials' }, 401)
     }
@@ -36,7 +38,6 @@ export const loginHandler = async (c: Context) => {
       tokenId: crypto.randomUUID(),
       userId: user.id,
       tokenHash: hashedToken,
-      createdAt: new Date().toISOString(),
       sessionExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days
       tokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days
     })
@@ -50,7 +51,9 @@ export const loginHandler = async (c: Context) => {
       path: '/',
     })
 
-    return c.json({ message: 'successfully logged in' }, 200)
+    const accessToken = await createAccessToken(user.id, c.env.JWT_SECRET);
+
+    return c.json({ message: 'successfully logged in', accessToken: accessToken}, 200)
   }
   catch (error) {
     console.error('Error logging in:', error);

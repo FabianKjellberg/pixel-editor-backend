@@ -1,3 +1,5 @@
+import { SignJWT } from 'jose'
+
 export function generateSessionToken(bytes: number = 32): string {
     const arr = new Uint8Array(bytes)
     crypto.getRandomValues(arr)
@@ -26,5 +28,18 @@ export async function hashSessionToken(token: string, secret: string): Promise<s
         new TextEncoder().encode(token)
     )
 
-    return hex(sig) // store this in DB
+    return hex(sig) 
+}
+
+export async function createAccessToken(userId: string, jwtSecret: string): Promise<string> {
+    const secret = new TextEncoder().encode(jwtSecret);
+
+    return await new SignJWT({
+        sub: userId,
+        type: 'access'
+    })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30s')
+    .sign(secret)
 }
