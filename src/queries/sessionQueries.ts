@@ -94,3 +94,28 @@ export async function rotateToken(db: D1Database, params: RotateTokenParams): Pr
     )
     .run();
 }
+
+export async function invalidateSession(db: D1Database, hashedToken: string): Promise<void> {
+  await db
+    .prepare(`
+      UPDATE refresh_session
+      SET invalidated_at = CURRENT_TIMESTAMP
+      WHERE id = (
+        SELECT refresh_session_id
+        FROM refresh_token
+        WHERE token_hash = ?
+        LIMIT 1
+      );
+    `)
+    .bind(hashedToken)
+    .run();
+
+  await db
+    .prepare(`
+      UPDATE refresh_token
+      SET invalidated_at = CURRENT_TIMESTAMP
+      WHERE token_hash = ?
+    `)
+    .bind(hashedToken)
+    .run();
+}

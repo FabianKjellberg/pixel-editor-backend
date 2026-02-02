@@ -19,7 +19,7 @@ authRoutes.post('/login', loginHandler);
 authRoutes.post('/register', registerHandler);
 
 // Logout route
-authRoutes.post('/logout', authMiddleware, logoutHandler);
+authRoutes.post('/logout', logoutHandler);
 
 // Refresh route
 authRoutes.post('/refresh', refreshHandler);
