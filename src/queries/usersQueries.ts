@@ -60,3 +60,27 @@ export async function getUserByUsername(db: D1Database, username: string): Promi
 
   return user;
 }
+
+/**
+ * get user entity from userId
+ * @param db - the database connection
+ * @param userId - the userId to get the user for
+ * @returns the user entity if found, null otherwise
+ */
+export async function getUserById(db: D1Database, userId: string): Promise<UserEntity | null> {
+  const result = await db
+    .prepare(`
+      SELECT * FROM users
+      WHERE id = ?
+    `)
+    .bind(userId)
+    .first<UserRow>();
+
+  if (result === null) {
+    return null;
+  }
+
+  const user: UserEntity = userMapper.fromRow(result);
+
+  return user;
+}
