@@ -18,5 +18,26 @@
       "database_name": "my-database",
       "database_id": "33ab41e5-5e88-4db0-8bda-0c500b5b0b92"
     }
-  ]
+  ],
+  "env": {
+    "dev": {
+      "vars": {
+        "ENV": "development",
+        "R2_BUCKET_NAME": "my-bucket-dev"
+      },
+      "r2_buckets": [
+        {
+          "binding": "BLOB",
+          "bucket_name": "my-bucket-dev"
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "my-database-dev",
+          "database_id": "b2d981fb-7b68-4011-bd6d-371688ae73bd"
+        }
+      ]
+    }
+  }
 }
