@@ -111,7 +111,7 @@ export const createProjectHandler = async (c: Context) => {
         height: body.project.height,
       }),
       ...mappedLayers.map((layer) => {
-        return queries.project.CreateLayerStatement(db, layer);
+        return queries.layer.CreateLayerStatement(db, layer);
       }),
     ];
 

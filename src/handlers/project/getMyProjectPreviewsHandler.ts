@@ -12,8 +12,6 @@ export const getMyProjectPreviewsHandler = async (c: Context) => {
 
     const projects: ProjectEntity[] = await queries.project.GetAllProjectsFromUserId(db, userId);
 
-    console.log(projects)
-
     const responseBody = await Promise.all(projects.map(async (project) => {
       if (!project.previewKey) {
         return {

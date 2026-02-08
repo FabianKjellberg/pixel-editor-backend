@@ -30,29 +30,6 @@ export function CreateProjectStatement(
     )
 }
 
-export function CreateLayerStatement(
-  db: D1Database, 
-  params: LayerEntity
-): D1PreparedStatement {
-  return db
-    .prepare(`
-      INSERT INTO layer (id, blob_key, project_id, name, width, height, x, y, length, z_index)
-        VALUES (?, ?, ?, ? ,? ,? ,?, ?, ?, ?)
-    `)
-    .bind(
-      params.id,
-      params.blobKey,
-      params.projectId,
-      params.name,
-      params.width,
-      params.height,
-      params.x,
-      params.y,
-      params.length,
-      params.zIndex
-    )
-}
-
 export async function EnsureProjectExist(db: D1Database, projectId: string, userId: string){
   const project = await db
   .prepare(`
@@ -80,4 +57,60 @@ export async function GetAllProjectsFromUserId(db: D1Database, userId: string): 
   return results 
     ? results.map((projectRow) => projectMapper.fromRow(projectRow)) 
     : [];
+}
+
+export async function GetProjectFromProjectId(db: D1Database, userId: string, projectId: string): Promise<ProjectEntity | null> {
+  const results = await db
+    .prepare(`
+      SELECT * FROM project
+      WHERE user_id = ?
+      AND id = ?
+    `)
+    .bind(userId, projectId)
+    .first<ProjectRow>()
+
+    return results ? projectMapper.fromRow(results) : null;
+}
+
+export async function GetProjectFromLayerId(db: D1Database, userId: string, layerId: string) {
+  const project = await db
+    .prepare(`
+      SELECT p.* FROM project as p
+      JOIN layer as l 
+        ON l.project_id = p.id
+      WHERE l.id = ?
+      AND p.user_id = ? 
+    `)
+    .bind(layerId, userId)
+    .first<ProjectRow>();
+
+  return project ? projectMapper.fromRow(project) : null;
+}
+
+export async function GetLayerCount(db: D1Database, projectId: string): Promise<number>{
+  const row = await db
+  .prepare(`
+    SELECT COUNT(*)
+    FROM layer
+    WHERE project_id = ?
+  `)
+  .bind(projectId)
+  .first<{count: number}>()
+  
+  return row?.count ? row.count : 0;
+}
+
+export async function UpdateProjectDimensions(db: D1Database, width: number, height: number, projectId: string): Promise<void>{
+  await db
+    .prepare(`
+      UPDATE project
+      SET width = ?, height = ?
+      WHERE id = ?
+    `)
+    .bind(
+      width, 
+      height, 
+      projectId
+    )
+    .run();
 }

@@ -10,6 +10,7 @@ export type LayerEntity = {
   length: number;
   zIndex: number; 
 }
+
 export type LayerRow = {
   id: string;
   blob_key: string;
@@ -21,6 +22,15 @@ export type LayerRow = {
   y: number;
   length: number;
   z_index: number; 
+}
+
+export type LayerMetaData = {
+  layerId: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  length: number,
 }
 
 export const layerMapper = {
@@ -51,5 +61,12 @@ export const layerMapper = {
       length: layer.length,
       z_index: layer.zIndex
     }
+  },
+  compareMetadata: (layer: LayerEntity, metadata: LayerMetaData): boolean => {
+    return metadata.height === layer.height 
+    && metadata.width === layer.width
+    && metadata.x === layer.x
+    && metadata.y === layer.y
+    && metadata.length === layer.length
   }
 }
