@@ -58,14 +58,12 @@ export const saveLayerHandler = async (c: Context) => {
       {aws: {signQuery: true}}
     )
 
-    return c.json(
-      {
-        previewUrl: previewSigned.url,
-        layerUrl: layerSigned.url
-      },
-      200,
-    )
+    const responseBody: SaveLayerResponse = {
+      previewUrl: previewSigned.url,
+      layerUrl: layerSigned.url
+    }
 
+    return c.json(responseBody, 200)
   }
   catch (error) {
     console.error("Error creating project:", error);

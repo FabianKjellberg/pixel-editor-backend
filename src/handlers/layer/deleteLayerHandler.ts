@@ -1,5 +1,4 @@
 import { Context } from 'hono'
-import { LayerEntity } from '../../models/Layer'
 import { queries } from '../../queries'
 import { makeObjectUrl, makeSigner } from '../../util/blobUtil'
 

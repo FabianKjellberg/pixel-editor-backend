@@ -1,6 +1,5 @@
 import { D1Database, D1PreparedStatement } from "@cloudflare/workers-types";
 import { ProjectEntity, projectMapper, ProjectRow } from "../models/Project";
-import { LayerEntity } from "../models/Layer";
 
 type CreateProjectParams = {
   id: string,
