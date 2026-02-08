@@ -16,7 +16,7 @@ export const getMeHandler = async (c: Context) => {
     },200)
   }  
   catch (error) {
-    console.error('Error logging in:', error);
+    console.error('Error fetching user:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 }

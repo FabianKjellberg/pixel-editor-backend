@@ -8,7 +8,7 @@ type CreateSessionParams = {
   tokenHash: string;
   sessionExpiresAt: string;
   tokenExpiresAt: string;
-}
+};
 
 type RotateTokenParams = {
   tokenId: string;
@@ -17,50 +17,58 @@ type RotateTokenParams = {
   newHashedToken: string;
   now: string;
   tokenExpiresAt: string;
-}
+};
 
-export async function createRefreshSessionWithToken(db: D1Database, session: CreateSessionParams): Promise<void> {
+export async function createRefreshSessionWithToken(
+  db: D1Database,
+  session: CreateSessionParams
+): Promise<void> {
   await db
-    .prepare(`
+    .prepare(
+      `
       INSERT INTO refresh_session (id, user_id, valid_to)
         VALUES (?, ?, ?)
-    `)
-    .bind(
-      session.sessionId,
-      session.userId,
-      session.sessionExpiresAt,
+    `
     )
+    .bind(session.sessionId, session.userId, session.sessionExpiresAt)
     .run();
 
   await db
-    .prepare(`
+    .prepare(
+      `
       INSERT INTO refresh_token (id, refresh_session_id, token_hash, valid_to)
         VALUES (?, ?, ?, ?)
-    `)
+    `
+    )
     .bind(
       session.tokenId,
       session.sessionId,
       session.tokenHash,
-      session.tokenExpiresAt,
+      session.tokenExpiresAt
     )
     .run();
 }
 
-export async function getSessionFromToken(db: D1Database, tokenHash: string): Promise<SessionEntity | null> {
+export async function getSessionFromToken(
+  db: D1Database,
+  tokenHash: string
+): Promise<SessionEntity | null> {
   const session = await db
-  .prepare(`
+    .prepare(
+      `
     SELECT rs.* FROM refresh_session as rs
     JOIN refresh_token as rt
       ON rt.refresh_session_id == rs.id
     WHERE rt.token_hash = ?
     AND rt.invalidated_at IS NULL
-  `)
-  .bind(tokenHash)
-  .first<SessionRow>();
+  `
+    )
+    .bind(tokenHash)
+    .first<SessionRow>();
 
-  if(session == null) return null;
+  if (session == null) return null;
 
-  const sessionEntity : SessionEntity = sessionMapper.fromRow(session);
+  const sessionEntity: SessionEntity = sessionMapper.fromRow(session);
 
   const isExpired = sessionEntity.validTo.getTime() <= Date.now();
 
@@ -71,33 +79,44 @@ export async function getSessionFromToken(db: D1Database, tokenHash: string): Pr
   return sessionEntity;
 }
 
-export async function rotateToken(db: D1Database, params: RotateTokenParams): Promise<void> {
+export async function rotateToken(
+  db: D1Database,
+  params: RotateTokenParams
+): Promise<void> {
   await db
-    .prepare(`
+    .prepare(
+      `
       UPDATE refresh_token
       SET invalidated_at = ?
       WHERE token_hash = ?  
-    `)
+    `
+    )
     .bind(params.now, params.oldHashedToken)
     .run();
 
   await db
-    .prepare(`
+    .prepare(
+      `
       INSERT INTO refresh_token (id, refresh_session_id, token_hash, valid_to)
         VALUES (?, ?, ?, ?) 
-    `)
+    `
+    )
     .bind(
       params.tokenId,
       params.sessionId,
       params.newHashedToken,
-      params.tokenExpiresAt,
+      params.tokenExpiresAt
     )
     .run();
 }
 
-export async function invalidateSession(db: D1Database, hashedToken: string): Promise<void> {
+export async function invalidateSession(
+  db: D1Database,
+  hashedToken: string
+): Promise<void> {
   await db
-    .prepare(`
+    .prepare(
+      `
       UPDATE refresh_session
       SET invalidated_at = CURRENT_TIMESTAMP
       WHERE id = (
@@ -106,16 +125,19 @@ export async function invalidateSession(db: D1Database, hashedToken: string): Pr
         WHERE token_hash = ?
         LIMIT 1
       );
-    `)
+    `
+    )
     .bind(hashedToken)
     .run();
 
   await db
-    .prepare(`
+    .prepare(
+      `
       UPDATE refresh_token
       SET invalidated_at = CURRENT_TIMESTAMP
       WHERE token_hash = ?
-    `)
+    `
+    )
     .bind(hashedToken)
     .run();
 }

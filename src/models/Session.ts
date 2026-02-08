@@ -1,5 +1,3 @@
-import { UserEntity } from "./User";
-
 export type SessionEntity = {
   id: string;
   userId: string;
