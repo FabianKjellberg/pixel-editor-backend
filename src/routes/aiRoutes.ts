@@ -4,6 +4,6 @@ import { testAiHandler } from '../handlers/ai/testAiHandler';
 
 const aiRoutes = new Hono();
 
-aiRoutes.get('/test', authMiddleware, testAiHandler)
+aiRoutes.post('/test', authMiddleware, testAiHandler)
 
 export default aiRoutes;
