@@ -1,7 +1,6 @@
 import { Context } from 'hono';
 import OpenAi from 'openai';
-import {AiAction, aiTools } from '../../models/AiModels';
-import { buildFortifierPrompt, buildSystemPrompt, makePromts, parseAiActions } from '../../util/aiUtil';
+import { buildFortifierPrompt, buildSystemPrompt, extractSummaryFromPlan, makePromts, parseJsonActions, ToolCall } from '../../util/aiUtil';
 
 export type MessageItem = {
   message:string,
@@ -10,16 +9,17 @@ export type MessageItem = {
 
 type TestAiBody = {
   promts?: MessageItem[],
-  /** Accepted typo: single prompt string (normalized to one user message) */
   promt?: string,
   width: number,
   height: number,
 }
 
-const AI_MODEL = "gpt-5-mini"
+const AI_MODEL = "gpt-5.2"
 
 type TestAiResponse = {
-  actions: AiAction[]
+  actions: ToolCall[]
+  intent: 'DRAW' | 'CHAT' | 'CLARIFY'
+  shouldCallTools: boolean
   message: string
 }
 
@@ -34,7 +34,6 @@ export const testAiHandler = async (c: Context) => {
         : [];
 
     const openai = new OpenAi({apiKey: c.env.OPENAI_API_KEY})
-
 
     const fortifierSystemPromt: string = buildFortifierPrompt(body.width, body.height);
     
@@ -53,12 +52,12 @@ export const testAiHandler = async (c: Context) => {
     })
 
     const planText = fortifyPromtResponse.output_text;
+    const summaryMessage = extractSummaryFromPlan(planText);
 
     const systemPrompt = buildSystemPrompt(body.width, body.height, planText);
 
     const aiResponse = await openai.responses.create({
       model: AI_MODEL,
-
       input: [
         {
           role: "system",
@@ -66,15 +65,19 @@ export const testAiHandler = async (c: Context) => {
         },
         {
           role: "user",
-          content: systemPrompt
+          content: "Output the JSON array now."
         }
       ],
-
-      tools: aiTools,
-      tool_choice: "required",
     });
 
-    const response: TestAiResponse = {actions : parseAiActions(aiResponse), message: "this is a placeholder"};
+    const actions = parseJsonActions(aiResponse.output_text);
+
+    const response: TestAiResponse = {
+      actions,
+      intent: 'DRAW',
+      shouldCallTools: actions.length > 0,
+      message: summaryMessage,
+    };
 
     return c.json(response, 200)
   }

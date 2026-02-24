@@ -6,9 +6,9 @@ export type Point = {
 }
 
 export type Color = {
-  r: string,
-  g: string,
-  b: string
+  r: number,
+  g: number,
+  b: number
 }
 
 export enum AiActionEnum {
@@ -18,6 +18,8 @@ export enum AiActionEnum {
   ellipseTool = "ellipseTool",
   fillBucket = "fillBucket",
   changeCanvasSize = "changeCanvasSize",
+  gradientTool = "gradientTool",
+  freeformTool = "freeformTool",
 }
 
 export type AiPenStroke = {
@@ -77,7 +79,30 @@ export type AiChangeCanvasSize = {
   height: number,
 }
 
-export type AiAction = AiPenStroke | AiLineTool | AiRectangleTool | AiEllipseTool | AiFillBucket | AiChangeCanvasSize;
+export type AiGradientTool = {
+  action: AiActionEnum.gradientTool;
+  layerId: string;
+  color: Color;
+  toColor: Color;
+  opacity: number;
+  singleColor: boolean;
+  gradientType: string;
+  from: Point;
+  to: Point;
+}
+
+export type AiFreeformTool = {
+  action: AiActionEnum.freeformTool;
+  layerId: string;
+  color: Color;
+  fillColor: Color;
+  fill: boolean;
+  strokeWidth: number;
+  opacity: number;
+  points: Point[];
+}
+
+export type AiAction = AiPenStroke | AiLineTool | AiRectangleTool | AiEllipseTool | AiFillBucket | AiChangeCanvasSize | AiGradientTool | AiFreeformTool;
 
 export type AiResponse = {
     actions: AiAction[];
@@ -87,26 +112,17 @@ export const aiTools: OpenAI.Responses.Tool[] = [
   {
     type: "function",
     name: "penStroke",
-    description: `
-      Draw a polyline draw from point a to b with a.
-      -use penStroke for smaller details that need percision. -if you want to more complex shapes use a lineTool
-    `,
+    description: "Draw a polyline. Use for small details needing precision. For complex shapes use lineTool.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
         layerId: { type: "string" },
-        color: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        size: { type: 'number'},
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        size: { type: "number" },
+        opacity: { type: "number" },
         points: {
           type: "array",
           items: {
@@ -119,197 +135,112 @@ export const aiTools: OpenAI.Responses.Tool[] = [
             additionalProperties: false
           }
         },
-        opacity: { type: 'number'},
       },
-      required: ["layerId", "color", "points", 'size', 'opacity'],
+      required: ["layerId", "colorR", "colorG", "colorB", "size", "opacity", "points"],
       additionalProperties: false
     }
   },
   {
     type: "function",
     name: "lineTool",
-    description: "Draw a straight line from one point to another. Use for simple straight lines and geometric shapes.",
+    description: "Draw a straight line from one point to another.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
         layerId: { type: "string" },
-        color: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        strokeWidth: { type: 'number'},
-        opacity: { type: 'number'},
-        from: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        },
-        to: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        }
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        strokeWidth: { type: "number" },
+        opacity: { type: "number" },
+        fromX: { type: "number" },
+        fromY: { type: "number" },
+        toX: { type: "number" },
+        toY: { type: "number" },
       },
-      required: ["layerId", "color", "strokeWidth", "opacity", "from", "to"],
+      required: ["layerId", "colorR", "colorG", "colorB", "strokeWidth", "opacity", "fromX", "fromY", "toX", "toY"],
       additionalProperties: false
     }
   },
   {
     type: "function",
     name: "rectangleTool",
-    description: "Draw a rectangle shape. The rectangle is drawn from the 'from' point to the 'to' point, creating a rectangular area.",
+    description: "Draw a rectangle from 'from' to 'to'.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
         layerId: { type: "string" },
-        color: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        fill: {type: 'boolean'},
-        fillColor: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        strokeWidth: { type: 'number'},
-        opacity: { type: 'number'},
-        from: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        },
-        to: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        }
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        fill: { type: "boolean" },
+        fillColorR: { type: "number" },
+        fillColorG: { type: "number" },
+        fillColorB: { type: "number" },
+        strokeWidth: { type: "number" },
+        opacity: { type: "number" },
+        fromX: { type: "number" },
+        fromY: { type: "number" },
+        toX: { type: "number" },
+        toY: { type: "number" },
       },
-      required: ["layerId", "color", "strokeWidth", "opacity", "from", "to", "fill", "fillColor"],
+      required: ["layerId", "colorR", "colorG", "colorB", "fill", "fillColorR", "fillColorG", "fillColorB", "strokeWidth", "opacity", "fromX", "fromY", "toX", "toY"],
       additionalProperties: false
     }
   },
   {
     type: "function",
     name: "ellipseTool",
-    description: "Draw an ellipse (oval) shape. The ellipse is drawn within the bounding box defined by the 'from' and 'to' points.",
+    description: "Draw an ellipse within the bounding box from 'from' to 'to'.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
         layerId: { type: "string" },
-        color: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        fill: {type: 'boolean'},
-        fillColor: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        strokeWidth: { type: 'number'},
-        opacity: { type: 'number'},
-        from: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        },
-        to: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" }
-          },
-          required: ["x", "y"],
-          additionalProperties: false
-        }
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        fill: { type: "boolean" },
+        fillColorR: { type: "number" },
+        fillColorG: { type: "number" },
+        fillColorB: { type: "number" },
+        strokeWidth: { type: "number" },
+        opacity: { type: "number" },
+        fromX: { type: "number" },
+        fromY: { type: "number" },
+        toX: { type: "number" },
+        toY: { type: "number" },
       },
-      required: ["layerId", "color", "strokeWidth", "opacity", "from", "to", "fill", "fillColor"],
+      required: ["layerId", "colorR", "colorG", "colorB", "fill", "fillColorR", "fillColorG", "fillColorB", "strokeWidth", "opacity", "fromX", "fromY", "toX", "toY"],
       additionalProperties: false
     }
   },
   {
     type: "function",
     name: "fillBucket",
-    description: "Fill an area with color using flood fill. Starts filling from the specified x, y coordinate and fills all connected pixels of the same color.",
+    description: "Flood fill from (x,y) with the given color.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
         layerId: { type: "string" },
-        color: {
-          type: "object",
-          properties: {
-            r: { type: "number" },
-            g: { type: "number" },
-            b: { type: "number" }
-          },
-          required: ["r", "g", "b"],
-          additionalProperties: false
-        },
-        opacity: { type: 'number'},
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        opacity: { type: "number" },
         x: { type: "number" },
-        y: { type: "number" }
+        y: { type: "number" },
       },
-      required: ["layerId", "color", "opacity", "x", "y"],
+      required: ["layerId", "colorR", "colorG", "colorB", "opacity", "x", "y"],
       additionalProperties: false
     }
   },
   {
     type: "function",
     name: "changeCanvasSize",
-    description: "Resize the drawing canvas",
+    description: "Resize the drawing canvas.",
     strict: true,
     parameters: {
       type: "object",
@@ -318,6 +249,71 @@ export const aiTools: OpenAI.Responses.Tool[] = [
         height: { type: "number" }
       },
       required: ["width", "height"],
+      additionalProperties: false
+    }
+  },
+  {
+    type: "function",
+    name: "gradientTool",
+    description: "Draw a gradient from 'from' toward 'to'. Blends color into toColor. singleColor=true fades to transparent instead.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        layerId: { type: "string" },
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        toColorR: { type: "number" },
+        toColorG: { type: "number" },
+        toColorB: { type: "number" },
+        opacity: { type: "number" },
+        singleColor: { type: "boolean" },
+        gradientType: {
+          type: "string",
+          enum: ["Dithering", "Random", "Linear"]
+        },
+        fromX: { type: "number" },
+        fromY: { type: "number" },
+        toX: { type: "number" },
+        toY: { type: "number" },
+      },
+      required: ["layerId", "colorR", "colorG", "colorB", "toColorR", "toColorG", "toColorB", "opacity", "singleColor", "gradientType", "fromX", "fromY", "toX", "toY"],
+      additionalProperties: false
+    }
+  },
+  {
+    type: "function",
+    name: "freeformTool",
+    description: "Draw a closed polygon. Auto-closed: last point connects back to first. Good for irregular shapes, triangles, stars.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        layerId: { type: "string" },
+        colorR: { type: "number" },
+        colorG: { type: "number" },
+        colorB: { type: "number" },
+        fillColorR: { type: "number" },
+        fillColorG: { type: "number" },
+        fillColorB: { type: "number" },
+        fill: { type: "boolean" },
+        strokeWidth: { type: "number" },
+        opacity: { type: "number" },
+        points: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              x: { type: "number" },
+              y: { type: "number" }
+            },
+            required: ["x", "y"],
+            additionalProperties: false
+          }
+        },
+      },
+      required: ["layerId", "colorR", "colorG", "colorB", "fillColorR", "fillColorG", "fillColorB", "fill", "strokeWidth", "opacity", "points"],
       additionalProperties: false
     }
   }
