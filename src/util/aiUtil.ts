@@ -1,5 +1,4 @@
-import type OpenAi from 'openai'
-import { AiAction, AiActionEnum } from '../models/AiModels'
+import { Color, Point } from '../models/AiModels'
 import { MessageItem } from '../handlers/ai/testAiHandler';
 
 export function makePromts(messages: MessageItem[] | undefined){
@@ -10,114 +9,170 @@ export function makePromts(messages: MessageItem[] | undefined){
   .join("\n\n");
 }
 
-export function parseAiActions(
-  response: OpenAi.Responses.Response
-): AiAction[]{
-  const actions: AiAction[] = [];
+function rgb(r: number, g: number, b: number): Color {
+  return { r, g, b };
+}
 
-  for (const item of response.output) {
-    if (item.type !== 'function_call') continue;
+function pt(x: number, y: number): Point {
+  return { x, y };
+}
 
-    const args = JSON.parse(item.arguments);
+export type ToolCall = { tool: string; args: Record<string, any> };
 
-    switch (item.name) {
+export function parseJsonActions(text: string): ToolCall[] {
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error('No JSON array found in AI response');
+
+  const raw: any[] = JSON.parse(jsonMatch[0]);
+  const actions: ToolCall[] = [];
+
+  for (const a of raw) {
+    switch (a.tool) {
       case "penStroke":
-        actions.push({
-          action: AiActionEnum.penStroke,
-          layerId: args.layerId,
-          size: args.size,
-          color: args.color,
-          points: args.points,
-        });
+        actions.push({ tool: "penStroke", args: {
+          layerId: a.layerId,
+          size: a.size,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          points: a.points,
+          opacity: a.opacity,
+        }});
         break;
 
       case "lineTool":
-        actions.push({
-          action: AiActionEnum.lineTool,
-          layerId: args.layerId,
-          color: args.color,
-          strokeWidth: args.strokeWidth,
-          opacity: args.opacity,
-          from: args.from,
-          to: args.to,
-        });
+        actions.push({ tool: "lineTool", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          strokeWidth: a.strokeWidth,
+          opacity: a.opacity,
+          from: pt(a.fromX, a.fromY),
+          to: pt(a.toX, a.toY),
+        }});
         break;
 
       case "rectangleTool":
-        actions.push({
-          action: AiActionEnum.rectangleTool,
-          layerId: args.layerId,
-          color: args.color,
-          fill: args.fill,
-          fillColor: args.fillColor,
-          strokeWidth: args.strokeWidth,
-          opacity: args.opacity,
-          from: args.from,
-          to: args.to,
-        });
+        actions.push({ tool: "rectangleTool", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          fill: a.fill,
+          fillColor: rgb(a.fillColorR, a.fillColorG, a.fillColorB),
+          strokeWidth: a.strokeWidth,
+          opacity: a.opacity,
+          from: pt(a.fromX, a.fromY),
+          to: pt(a.toX, a.toY),
+        }});
         break;
 
       case "ellipseTool":
-        actions.push({
-          action: AiActionEnum.ellipseTool,
-          layerId: args.layerId,
-          color: args.color,
-          fill: args.fill,
-          fillColor: args.fillColor,
-          strokeWidth: args.strokeWidth,
-          opacity: args.opacity,
-          from: args.from,
-          to: args.to,
-        });
+        actions.push({ tool: "ellipseTool", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          fill: a.fill,
+          fillColor: rgb(a.fillColorR, a.fillColorG, a.fillColorB),
+          strokeWidth: a.strokeWidth,
+          opacity: a.opacity,
+          from: pt(a.fromX, a.fromY),
+          to: pt(a.toX, a.toY),
+        }});
         break;
 
       case "fillBucket":
-        actions.push({
-          action: AiActionEnum.fillBucket,
-          layerId: args.layerId,
-          color: args.color,
-          opacity: args.opacity,
-          x: args.x,
-          y: args.y,
-        });
+        actions.push({ tool: "fillBucket", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          opacity: a.opacity,
+          x: a.x,
+          y: a.y,
+        }});
         break;
 
       case "changeCanvasSize":
-        actions.push({
-          action: AiActionEnum.changeCanvasSize,
-          width: args.width,
-          height: args.height
-        });
+        actions.push({ tool: "changeCanvasSize", args: {
+          width: a.width,
+          height: a.height,
+        }});
+        break;
+
+      case "gradientTool":
+        actions.push({ tool: "gradientTool", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          toColor: rgb(a.toColorR, a.toColorG, a.toColorB),
+          opacity: a.opacity,
+          singleColor: a.singleColor,
+          gradientType: a.gradientType,
+          from: pt(a.fromX, a.fromY),
+          to: pt(a.toX, a.toY),
+        }});
+        break;
+
+      case "freeformTool":
+        actions.push({ tool: "freeformTool", args: {
+          layerId: a.layerId,
+          color: rgb(a.colorR, a.colorG, a.colorB),
+          fillColor: rgb(a.fillColorR, a.fillColorG, a.fillColorB),
+          fill: a.fill,
+          strokeWidth: a.strokeWidth,
+          opacity: a.opacity,
+          points: a.points,
+        }});
         break;
 
       default:
-        throw new Error(`Unknown AI tool: ${item.name}`);
+        console.warn(`Unknown AI tool in JSON: ${a.tool}`);
     }
   }
 
   return actions;
 }
 
+export function extractSummaryFromPlan(planText: string): string {
+  const lines = planText.split('\n');
+  let capturing = false;
+  const summaryLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^1\)\s*summary/i.test(trimmed)) {
+      capturing = true;
+      continue;
+    }
+    if (capturing && /^2\)\s*/i.test(trimmed)) break;
+    if (capturing && trimmed.length > 0) {
+      summaryLines.push(trimmed.replace(/^-\s*/, ''));
+    }
+  }
+
+  return summaryLines.join(' ').trim() || 'Drawing your request...';
+}
+
 export function buildSystemPrompt(width: number, height: number, planText: string) {
   return `
-You are an EXECUTOR. You receive a PLAN and must produce tool calls to execute it exactly.
+You are an EXECUTOR. Convert the PLAN below into a JSON array of drawing actions.
 
-CANVAS
-- Current canvas size: ${width}x${height}
+CANVAS: ${width}x${height}
 
-OUTPUT RULES
-- Output ONLY valid JSON.
-- Output must be an array of tool-call objects.
-- Each tool-call object must have:
-  - "tool": one of ["changeCanvasSize","fillBucket","rectangleTool","ellipseTool","lineTool","penStroke"]
-  - "args": an object containing ALL required properties for that tool (no omissions).
-- If a step requires multiple tool calls, include them in order.
-- Do not include explanations, comments, markdown, or extra text.
+RULES
+- Output ONLY a JSON array. No markdown, no backticks, no explanation.
+- One object per step. If a step says "draw 3 lines", output 3 separate objects.
+- Do NOT skip any step. Do NOT combine steps.
+- Every object MUST have a "tool" key and ALL required flat properties.
+- Use the exact layerId names from the plan (descriptive names like "Sky", "Ground", etc.).
 
-PLAN (AUTHORITATIVE)
+TOOL SCHEMAS (flat properties, no nested objects):
+
+penStroke: tool, layerId, colorR, colorG, colorB, size, opacity, points:[{x,y}...]
+lineTool: tool, layerId, colorR, colorG, colorB, strokeWidth, opacity, fromX, fromY, toX, toY
+rectangleTool: tool, layerId, colorR, colorG, colorB, fill, fillColorR, fillColorG, fillColorB, strokeWidth, opacity, fromX, fromY, toX, toY
+ellipseTool: tool, layerId, colorR, colorG, colorB, fill, fillColorR, fillColorG, fillColorB, strokeWidth, opacity, fromX, fromY, toX, toY
+fillBucket: tool, layerId, colorR, colorG, colorB, opacity, x, y
+changeCanvasSize: tool, width, height
+gradientTool: tool, layerId, colorR, colorG, colorB, toColorR, toColorG, toColorB, opacity, singleColor, gradientType("Dithering"|"Random"|"Linear"), fromX, fromY, toX, toY
+freeformTool: tool, layerId, colorR, colorG, colorB, fillColorR, fillColorG, fillColorB, fill, strokeWidth, opacity, points:[{x,y}...]
+
+PLAN
 ${planText.trim()}
 
-Now output the tool calls for all steps as a single JSON array.
+Output the JSON array now:
 `.trim();
 }
 
@@ -135,16 +190,27 @@ CANVAS
 
 PLANNING RULES
 - Think in layers: background -> midground -> foreground -> details.
-- Use simple shapes first (rectangle/ellipse), then details (line/penStroke), then fills (fillBucket).
+- Use gradients first for smooth backgrounds (gradientTool), then simple shapes (rectangle/ellipse), then details (line/penStroke/freeformTool), then fills (fillBucket).
 - Only call changeCanvasSize if the user asks or the request cannot reasonably fit.
 - Only use colors that are clearly justified by the request; if unspecified, use a sensible minimal palette (e.g., sky blue, grass green, neutral grays) and keep it consistent.
 - Be explicit with coordinates, sizes, stroke widths, and opacity (0..255).
 - Keep shapes inside the canvas.
 - Avoid random colors.
-- in the promt you will recieve multiple messages between you and the user, where the first item in the array is the most recent message. keep in mind all of the promts but focus mostly on the most recent one.
+- In the prompt you will receive multiple messages between you and the user, where the first item in the array is the most recent message. Keep in mind all of the prompts but focus mostly on the most recent one.
+
+LAYER RULES (IMPORTANT)
+- Give each layer a short, descriptive name that describes its content (e.g. "Sky", "Ground", "Trees", "Character Outline", "Eyes", "Shadow").
+- Do NOT use generic names like "layer1" or "layer2".
+- Each NEW layer is created ON TOP of all previous layers.
+- The FIRST layer mentioned in the steps will end up at the BOTTOM (behind everything).
+- The LAST new layer mentioned will be at the TOP (in front of everything).
+- Example order (bottom to top): "Sky" (first mentioned, bottom) -> "Mountains" -> "Trees" -> "Details" (last mentioned, top).
+- You can draw on an earlier layer again later — it stays at its original depth.
+- Plan your steps so background layers come FIRST and foreground/detail layers come LAST.
 
 COLOR
-- "color" and "fillColor" are objects: { "r":0..255, "g":0..255, "b":0..255 }
+- Colors use flat properties: colorR, colorG, colorB (0..255 each).
+- Fill colors: fillColorR, fillColorG, fillColorB.
 - Opacity is separate and is 0..255.
 
 TOOLS AVAILABLE
@@ -152,19 +218,36 @@ TOOLS AVAILABLE
 - width, height
 
 [fillBucket]
-- x, y, opacity, color
+- layerId, x, y, opacity, colorR, colorG, colorB
 
 [rectangleTool]
-- from {x,y}, to {x,y}, fill, fillColor, color, opacity, strokeWidth
+- layerId, fromX, fromY, toX, toY, fill, fillColorR, fillColorG, fillColorB, colorR, colorG, colorB, opacity, strokeWidth
 
 [ellipseTool]
-- from {x,y}, to {x,y}, fill, fillColor, color, opacity, strokeWidth
+- layerId, fromX, fromY, toX, toY, fill, fillColorR, fillColorG, fillColorB, colorR, colorG, colorB, opacity, strokeWidth
 
 [lineTool]
-- from {x,y}, to {x,y}, color, opacity, strokeWidth
+- layerId, fromX, fromY, toX, toY, colorR, colorG, colorB, opacity, strokeWidth
 
 [penStroke]
-- color, size, points [{x,y}, ...]
+- layerId, colorR, colorG, colorB, size, opacity, points [{x,y}, ...]
+
+[gradientTool]
+- layerId, fromX, fromY, toX, toY: defines gradient direction
+- colorR, colorG, colorB: start color
+- toColorR, toColorG, toColorB: end color (ignored when singleColor is true)
+- opacity: 0..255
+- singleColor: boolean (true = fade to transparent)
+- gradientType: "Dithering" | "Random" | "Linear"
+- Great for backgrounds, skies, water, sunsets, smooth color transitions
+
+[freeformTool]
+- layerId, points [{x,y}, ...]: polygon vertices (auto-closed: last point connects to first)
+- colorR, colorG, colorB: stroke color
+- fillColorR, fillColorG, fillColorB: fill color
+- fill: boolean (whether to fill the interior)
+- strokeWidth, opacity: 0..255
+- Great for irregular shapes, triangles, stars, mountains, custom outlines
 
 OUTPUT FORMAT
 Return ONLY the PLAN text.
@@ -178,17 +261,23 @@ Use this exact structure:
   - Sky: {r:80,g:140,b:220}
   - Outline: {r:255,g:255,b:255}
 
-3) Steps
+3) Layers (bottom to top)
+- List each layer name and its purpose. Example:
+  - "Sky" — gradient background
+  - "Mountains" — mountain shapes
+  - "Trees" — foreground tree details
+
+4) Steps
 - Numbered steps.
 - Each step must specify:
   - tool(s) to use
+  - exact layerId (must match a name from the Layers section)
   - exact coordinates
   - strokeWidth / size
   - opacity
   - fill vs stroke
-  - which layer it belongs to
 
-4) Notes
+5) Notes
 - Any constraints or edge cases for the EXECUTOR.
 
 `.trim();

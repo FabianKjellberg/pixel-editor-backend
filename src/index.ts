@@ -5,6 +5,7 @@ import { cors } from 'hono/cors'
 import userRoutes from './routes/userRoutes'
 import projectRoutes from './routes/projectRoutes'
 import layerRoutes from './routes/layerRoutes'
+import aiRoutes from './routes/aiRoutes'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -19,5 +20,6 @@ app.route('/auth', authRoutes)
 app.route('/user', userRoutes)
 app.route('/project', projectRoutes)
 app.route('/layer', layerRoutes)
+app.route('/ai', aiRoutes)
 
 export default app
